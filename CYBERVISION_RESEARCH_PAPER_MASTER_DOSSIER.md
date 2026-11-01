@@ -528,3 +528,4 @@ tests/test_models.py::test_hybrid_ensemble PASSED                        [100%]
 
 ---
 *Dossier prepared and certified for publication defense. All metrics, figures, schemas, and source code are reproducible via `python -m scripts.measure_empirical_latency` and `pytest tests/ -v`.*
+
