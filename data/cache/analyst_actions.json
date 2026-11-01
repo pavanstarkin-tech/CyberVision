@@ -1,0 +1,18 @@
+[
+  {
+    "action_id": "ACT-fb3ab732",
+    "incident_id": "INC-2026-0001",
+    "analyst": "analyst1",
+    "action": "Approve Containment",
+    "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block.",
+    "timestamp": "2026-11-01T08:15:50.584411+00:00"
+  },
+  {
+    "action_id": "ACT-1c2b599a",
+    "incident_id": "INC-2026-0001",
+    "analyst": "analyst1",
+    "action": "Approve Containment",
+    "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block.",
+    "timestamp": "2026-11-01T08:16:37.678663+00:00"
+  }
+]

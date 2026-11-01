@@ -69,3 +69,18 @@ def test_cybervision_explainer():
     assert sv.shape == (8,)
     assert lat > 0.0
 
+
+def test_cti_offline_fallback():
+    from src.cti.cti_client import ThreatIntelligenceClient
+    client = ThreatIntelligenceClient()
+    
+    # Pre-cached known attacker IP
+    res_known = client.check_ip_reputation("205.174.165.73")
+    assert res_known["reputation_score"] >= 0.90
+    assert res_known["abuse_score"] >= 90
+    assert "threat_tags" in res_known
+
+    # Private LAN IP fallback
+    res_lan = client.check_ip_reputation("192.168.1.50")
+    assert res_lan["reputation_score"] == 0.0
+

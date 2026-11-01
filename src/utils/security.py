@@ -43,3 +43,4 @@ def get_secret(key_name: str, default: str = "") -> str:
         except Exception:
             return default
     return default
+

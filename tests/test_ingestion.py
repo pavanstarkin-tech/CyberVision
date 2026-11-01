@@ -82,3 +82,18 @@ def test_duckdb_manager():
 
     if os.path.exists(test_db_path):
         os.remove(test_db_path)
+
+
+def test_empty_database_handling():
+    empty_db_path = "data/cache/empty_test_db.duckdb"
+    if os.path.exists(empty_db_path):
+        os.remove(empty_db_path)
+
+    mgr = DuckDBManager(db_path=empty_db_path)
+    res = mgr.query("SELECT * FROM ecs_events WHERE 1=0")
+    assert res.empty
+    stats = mgr.get_summary_stats()
+    assert stats["total_records"] == 0
+
+    if os.path.exists(empty_db_path):
+        os.remove(empty_db_path)

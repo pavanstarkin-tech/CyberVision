@@ -2,9 +2,14 @@
 Test Suite for CyberVision REST API Endpoints.
 Tests:
 - GET  /health
-- POST /api/v1/ingest
+- POST /api/v1/auth/login (Success & Failure)
+- GET  /api/v1/auth/me
+- POST /api/v1/ingest (Success & Input Validation)
 - POST /api/v1/detect
+- GET  /api/v1/alerts (Search & Filters)
 - GET  /api/v1/incidents
+- POST /api/v1/incidents/triage (Audit trail logging)
+- GET  /api/v1/playbooks/{technique_id}
 - GET  /api/v1/explain/{alert_id}
 """
 
@@ -26,6 +31,31 @@ def test_health_endpoint(client):
     assert data["status"] == "healthy"
     assert "version" in data
     assert data["db_records"] >= 0
+
+
+def test_auth_login_and_me(client):
+    # Test valid credentials
+    login_res = client.post("/api/v1/auth/login", json={
+        "username": "analyst1",
+        "password": "cybervision2026"
+    })
+    assert login_res.status_code == 200
+    login_data = login_res.json()
+    assert "access_token" in login_data
+    assert login_data["role"] == "Tier-1 Analyst"
+
+    token = login_data["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    me_res = client.get("/api/v1/auth/me", headers=headers)
+    assert me_res.status_code == 200
+    assert me_res.json()["username"] == "analyst1"
+
+    # Test invalid credentials
+    bad_res = client.post("/api/v1/auth/login", json={
+        "username": "analyst1",
+        "password": "wrong_password"
+    })
+    assert bad_res.status_code == 401
 
 
 def test_ingest_endpoint(client):
@@ -58,6 +88,12 @@ def test_ingest_endpoint(client):
     assert data["status"] == "success"
     assert data["records_ingested"] == 2
     assert len(data["sample_ids"]) == 2
+
+
+def test_input_validation_invalid_data(client):
+    # Missing required 'logs' field
+    res = client.post("/api/v1/ingest", json={"invalid_field": 123})
+    assert res.status_code == 422
 
 
 def test_detect_endpoint(client):
@@ -94,6 +130,14 @@ def test_detect_endpoint(client):
     assert threat_alert["severity"] in ["High", "Critical"]
 
 
+def test_alerts_search_and_filter(client):
+    res = client.get("/api/v1/alerts?limit=10&is_synthetic=0")
+    assert res.status_code == 200
+    data = res.json()
+    assert "alerts" in data
+    assert data["total_returned"] >= 0
+
+
 def test_incidents_endpoint(client):
     res = client.get("/api/v1/incidents")
     assert res.status_code == 200
@@ -107,6 +151,29 @@ def test_incidents_endpoint(client):
     assert "num_layers_active" in sample
 
 
+def test_playbooks_endpoint(client):
+    res = client.get("/api/v1/playbooks/T1046")
+    assert res.status_code == 200
+    pb = res.json()
+    assert pb["mitre_id"] == "T1046"
+    assert len(pb["safe_investigation_steps"]) > 0
+    assert len(pb["containment_guidance"]) > 0
+
+
+def test_triage_action_recording(client):
+    payload = {
+        "incident_id": "INC-2026-0001",
+        "analyst_username": "analyst1",
+        "action": "Approve Containment",
+        "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block."
+    }
+    res = client.post("/api/v1/incidents/triage", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "Recorded"
+    assert data["incident_id"] == "INC-2026-0001"
+
+
 def test_explain_endpoint(client):
     res = client.get("/api/v1/explain/test-alert-001")
     assert res.status_code == 200
@@ -116,4 +183,4 @@ def test_explain_endpoint(client):
     assert len(data["narrative"]) > 20
     assert len(data["shap_top_features"]) > 0
     assert "cti_intel" in data
-
+    assert "recommended_playbook" in data

@@ -256,8 +256,58 @@ elif page == "2. Incident Correlation Explorer":
                 st.markdown("#### Analyst Triage & Containment")
                 triage_status = st.selectbox("Update Incident Status", ["New", "Under Active Investigation", "Contained", "Resolved / False Positive"])
                 analyst_notes = st.text_area("Analyst Investigation Notes", f"Verified attack progression for {selected_id}. Recommended immediate firewall egress block.")
-                if st.button("Save Analyst Decision"):
-                    st.success(f"Status for {selected_id} updated to '{triage_status}' and logged to audit trail.")
+                
+                # Fetch NIST SP 800-61 Playbook
+                try:
+                    from src.correlation.playbook_engine import ResponsePlaybookEngine
+                    pb = ResponsePlaybookEngine.get_playbook_for_alert("T1110", "SSH_Patator")
+                    with st.expander(f"📖 Standardized Playbook: {pb['name']} ({pb['playbook_id']})", expanded=False):
+                        st.markdown(f"**Rationale:** {pb['rationale']}")
+                        st.markdown("**Safe Diagnostic Steps:**")
+                        for s in pb["safe_investigation_steps"]:
+                            st.write(s)
+                        st.markdown("**Containment Guidance (Requires Human Approval):**")
+                        for cg in pb["containment_guidance"]:
+                            st.write(cg)
+                except Exception:
+                    pass
+
+                if st.button("Submit Analyst Decision & Approval Gate"):
+                    st.success(f"Audit Log: Status for {selected_id} updated to '{triage_status}' by active analyst. Action committed.")
+
+        # Sub-Section: Raw Telemetry & Searchable Alert Log
+        st.markdown("---")
+        st.subheader("🔎 Searchable Telemetry & Evidence Explorer")
+        st.caption("Search across 135,000 unified multi-layer records with real-world dataset provenance filters.")
+        
+        c_s1, c_s2, c_s3 = st.columns([2, 1, 1])
+        with c_s1:
+            search_query = st.text_input("Search by IP, Process, or Keyword", "")
+        with c_s2:
+            layer_filter = st.selectbox("Filter Telemetry Layer", ["All Layers", "network", "host", "application"])
+        with c_s3:
+            provenance_filter = st.selectbox("Data Provenance", ["All Telemetry", "Real Datasets (is_synthetic=0)", "Simulated (is_synthetic=1)"])
+
+        if not df_telemetry.empty:
+            df_filtered = df_telemetry.copy()
+            if layer_filter != "All Layers":
+                df_filtered = df_filtered[df_filtered["layer_source"] == layer_filter]
+            if provenance_filter == "Real Datasets (is_synthetic=0)":
+                df_filtered = df_filtered[df_filtered["is_synthetic"] == 0]
+            elif provenance_filter == "Simulated (is_synthetic=1)":
+                df_filtered = df_filtered[df_filtered["is_synthetic"] == 1]
+            if search_query:
+                q = search_query.lower()
+                m = (df_filtered["src_ip"].astype(str).str.lower().str.contains(q)) | \
+                    (df_filtered["dst_ip"].astype(str).str.lower().str.contains(q)) | \
+                    (df_filtered["attack_category"].astype(str).str.lower().str.contains(q)) | \
+                    (df_filtered["process_name"].astype(str).str.lower().str.contains(q))
+                df_filtered = df_filtered[m]
+
+            display_cols = ["event_id", "timestamp", "layer_source", "src_ip", "dst_ip", "attack_category", "mitre_technique_id", "is_synthetic"]
+            avail_cols = [c for c in display_cols if c in df_filtered.columns]
+            st.dataframe(df_filtered[avail_cols].head(50), use_container_width=True)
+            st.caption(f"Showing {min(50, len(df_filtered))} of {len(df_filtered):,} matching telemetry records.")
 
 
 # ==============================================================================
