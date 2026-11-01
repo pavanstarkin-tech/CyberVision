@@ -455,12 +455,22 @@ elif page == "4. Research Benchmarks & Ablations":
 
     with tab5:
         st.subheader("Publication-Grade Figures (300 DPI)")
+        st.caption("Figures are displayed in a compact 2-column grid layout to fit within the viewport without vertical stretching.")
         fig_dir = results_dir / "figures"
         if fig_dir.exists():
             figures = sorted(list(fig_dir.glob("*.png")))
-            for fig_p in figures:
-                st.markdown(f"#### {fig_p.stem.replace('_', ' ').title()}")
-                st.image(str(fig_p), use_container_width=True)
-                st.markdown("---")
+            # Render images two per row in columns
+            for i in range(0, len(figures), 2):
+                col1, col2 = st.columns(2)
+                with col1:
+                    fig1 = figures[i]
+                    st.markdown(f"**{fig1.stem.replace('_', ' ').title()}**")
+                    st.image(str(fig1), use_container_width=True)
+                if i + 1 < len(figures):
+                    with col2:
+                        fig2 = figures[i + 1]
+                        st.markdown(f"**{fig2.stem.replace('_', ' ').title()}**")
+                        st.image(str(fig2), use_container_width=True)
+                st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
             st.info("Figures generating...")
