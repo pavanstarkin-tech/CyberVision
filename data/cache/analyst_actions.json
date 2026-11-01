@@ -14,5 +14,13 @@
     "action": "Approve Containment",
     "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block.",
     "timestamp": "2026-11-01T08:16:37.678663+00:00"
+  },
+  {
+    "action_id": "ACT-8eeddb98",
+    "incident_id": "INC-2026-0001",
+    "analyst": "analyst1",
+    "action": "Approve Containment",
+    "notes": "Verified SSH brute-force progression; applied temporary host isolation.",
+    "timestamp": "2026-11-01T08:18:40.779363+00:00"
   }
 ]
