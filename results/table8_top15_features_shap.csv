@@ -1,0 +1,16 @@
+Layer,Feature_Name,Mean_Abs_SHAP,Benign_Median_IQR,Attack_Median_IQR,Primary_MITRE_Technique_ID,MITRE_Technique_Name
+Layer 1: Network,src_fanout_deg,2.716,0.01 (-0.01–0.02),-0.98 (-1.14–0.01),T1000,Enterprise Activity
+Layer 1: Network,unique_dst_ports,0.5487,0.00 (-0.10–0.04),0.00 (-1.00–7.69),T1046,Network Service Discovery
+Layer 1: Network,failed_logon_burst,0.2598,0.00 (0.00–0.00),0.00 (0.00–0.00),T1078,Valid Accounts Brute Force
+Layer 1: Network,flow_bytes_s,0.2195,0.00 (0.00–0.00),0.00 (0.00–44159.72),T1000,Enterprise Activity
+Layer 1: Network,init_win_bytes_fwd,0.2141,0.00 (0.00–0.00),0.00 (0.00–65535.00),T1000,Enterprise Activity
+Layer 2: Host/eBPF,child_spawn_velocity,0.4791,0.00 (0.00–0.11),0.00 (0.00–0.00),T1059,Command and Scripting Interpreter
+Layer 2: Host/eBPF,args_num,0.1187,0.00 (0.00–0.25),0.00 (0.00–0.00),T1059.004,Unix Shell Execution
+Layer 2: Host/eBPF,privilege_delta,0.0487,0.00 (0.00–0.00),0.00 (0.00–0.00),T1000,Enterprise Activity
+Layer 2: Host/eBPF,is_root_uid,0.0062,0.00 (0.00–0.00),0.00 (0.00–0.00),T1548,Abuse Elevation Control Mechanism
+Layer 2: Host/eBPF,namespace_switch_cnt,0.0,0.00 (0.00–0.00),0.00 (0.00–0.00),T1611,Escape to Host Container
+Layer 3: User/UEBA,failed_logon_burst,0.2598,0.00 (0.00–0.00),0.00 (0.00–0.00),T1078,Valid Accounts Brute Force
+Layer 3: User/UEBA,is_off_hours,0.1814,0.00 (0.00–0.00),0.00 (0.00–0.00),T1078.003,Local Accounts Off-Hours
+Layer 3: User/UEBA,off_hours_usb_bytes,0.0811,0.00 (0.00–0.00),0.00 (0.00–0.00),T1052.001,Exfiltration over Physical Medium
+Layer 3: User/UEBA,file_transfer_bytes,0.0527,0.00 (0.00–0.00),0.00 (0.00–0.00),T1048,Exfiltration Over Alternative Protocol
+Layer 3: User/UEBA,anomalous_session_duration,0.0137,0.00 (0.00–0.00),0.00 (0.00–0.00),T1000,Enterprise Activity

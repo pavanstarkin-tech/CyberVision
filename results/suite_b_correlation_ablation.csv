@@ -1,0 +1,4 @@
+Configuration,Raw_Alerts,Correlated_Incidents,AFR_Pct,FASR_Pct,Chain_Reconstruction_Pct
+Layer 1 Only (Network Flows),89,1,98.88,100.0,33.3
+Layer 1 + Layer 2 (Network + Host),124,1,99.19,100.0,66.7
+Full CyberVision (L1 + L2 + L3),145,1,99.31,100.0,100.0

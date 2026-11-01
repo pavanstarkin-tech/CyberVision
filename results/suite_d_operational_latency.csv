@@ -1,0 +1,6 @@
+Pipeline_Metric,Value
+End-to-End Processing Throughput,"39,022.7 Events/sec"
+Mean Model Inference Latency,0.026 ms/event
+Mean TreeSHAP Explanation Latency,2.08 ms/alert
+Simulated SOC Analyst MTTT (Black-Box),118.0 seconds
+Simulated SOC Analyst MTTT (CyberVision XAI),42.0 seconds (-64.4% reduction)

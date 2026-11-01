@@ -1,0 +1,5 @@
+XAI_Method,Faithfulness_Top1_Drop,Faithfulness_Top3_Drop,Faithfulness_Top5_Drop,Insertion_AUC,Lipschitz_Stability_L,Gini_Sparsity,Top5_Jaccard_with_TreeSHAP_Pct,Spearman_Rank_Correlation,Latency_p50_ms,Latency_p95_ms,Latency_p99_ms
+TreeSHAP,0.8852,0.9605,0.9623,0.9039,31.8063,0.8917,100.0,1.0,1.8,2.24,2.5
+KernelSHAP,0.8673,0.9241,0.9288,0.865,3.8541,0.9499,30.95,0.3007,28.09,32.4,34.82
+LIME Tabular,0.7338,0.7665,0.7882,0.728,4.6988,0.8113,22.94,0.4004,185.17,207.09,219.94
+Permutation Importance,0.7121,0.8638,0.8968,0.7622,0.0,0.9317,22.57,0.4379,2.61,2.61,2.61

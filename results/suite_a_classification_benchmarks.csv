@@ -1,0 +1,7 @@
+Model,Accuracy,Precision,Recall,Macro_F1,Weighted_F1,FPR,MCC,ROC_AUC,PR_AUC,ECE,Zero_Day_Holdout_Recall_Pct
+Logistic Regression,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0002,0.0
+Random Forest,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0002,48.86
+XGBoost,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0007,0.0
+LightGBM,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,0.0
+Isolation Forest (Unsupervised),0.9204,0.6814,0.9586,0.8735,0.9255,0.087,0.7657,0.9759,0.903,0.2317,55.68
+CyberVision Hybrid Ensemble,0.9574,0.7923,1.0,0.929,0.9593,0.0509,0.8672,1.0,1.0,0.1056,48.86

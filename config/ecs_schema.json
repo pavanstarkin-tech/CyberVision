@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CyberVisionECSUnifiedRecord",
+  "type": "object",
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "layer_source": { "type": "string", "enum": ["network", "host", "application"] },
+    "src_ip": { "type": "string" },
+    "dst_ip": { "type": "string" },
+    "src_port": { "type": "integer" },
+    "dst_port": { "type": "integer" },
+    "protocol": { "type": "string" },
+    "host_id": { "type": "string" },
+    "user_id": { "type": "string" },
+    "process_name": { "type": "string" },
+    "process_id": { "type": "integer" },
+    "parent_process_id": { "type": "integer" },
+    "event_action": { "type": "string" },
+    "raw_features": { "type": "object" },
+    "ground_truth_label": { "type": "integer" },
+    "attack_category": { "type": "string" },
+    "mitre_technique_id": { "type": "string" }
+  },
+  "required": [
+    "event_id",
+    "timestamp",
+    "layer_source",
+    "ground_truth_label",
+    "attack_category"
+  ]
+}
+

@@ -1,0 +1,7 @@
+Sliding_Window_Minutes,Correlated_Incidents,AFR_Pct,FASR_Pct,Chain_Reconstruction_Pct,Graph_Construction_Latency_ms
+1,1810,15.81,100.0,100.0,1947.95
+3,1291,39.95,100.0,100.0,1500.11
+5,861,59.95,99.9,100.0,1282.15
+10,196,90.88,99.95,100.0,963.36
+15,69,96.79,100.0,100.0,868.87
+30,10,99.53,100.0,100.0,541.98

@@ -1,0 +1,7 @@
+Configuration,Raw_Alerts,Raw_FP_Count,Correlated_Incidents,Post_Correlation_FPs,Alert_Fatigue_Reduction_Pct,False_Alert_Suppression_Pct,Incident_Precision_Pct,Incident_Recall_Pct,Chain_Reconstruction_Completeness_Pct
+Layer 1 Only (Network Ingress),1142,1092,622,0,45.53,100.0,0.0,100.0,33.33
+Layer 2 Only (Host/Kernel),545,495,440,0,19.27,100.0,0.0,100.0,33.33
+Layer 3 Only (User/UEBA),463,413,390,0,15.77,100.0,100.0,100.0,33.33
+Layer 1 + Layer 2 (Network + Host),1687,1587,770,0,54.36,100.0,100.0,100.0,66.67
+Layer 2 + Layer 3 (Host + User),1008,908,705,0,30.06,100.0,100.0,100.0,66.67
+Full CyberVision (L1 + L2 + L3 + CTI),2150,2000,861,2,59.95,99.9,96.72,100.0,100.0

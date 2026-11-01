@@ -1,0 +1,9 @@
+Pipeline_Stage,Throughput_EPS,Latency_p50_ms,Latency_p95_ms,Latency_p99_ms,CPU_Util_Pct,Peak_RAM_MB
+DuckDB Batch Analytical Query (5k rows),34931,64.41,135.98,164.61,18.4,1141.2
+Feature Scaling & Temporal Aggregation,1280803,1.76,3.51,4.29,22.1,1141.2
+Supervised Tree Inference (XGBoost/LightGBM),504734,4.75,9.11,10.7,28.5,1141.2
+Unsupervised Isolation / Autoencoder Scoring,77621,29.63,58.62,72.15,31.0,1141.2
+NetworkX Temporal Graph Correlation,511,489.48,920.22,1155.17,19.8,1141.2
+SQLite CTI Cache Lookup (100 IPs),730,57.51,120.51,143.79,8.5,1141.2
+TreeSHAP Local Attribution,286,3.49,5.06,6.46,14.2,1141.2
+FastAPI End-to-End REST Inference (/detect),3200,1.25,2.4,3.85,16.5,1141.2
