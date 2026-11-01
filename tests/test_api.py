@@ -34,7 +34,7 @@ def test_health_endpoint(client):
 
 
 def test_auth_login_and_me(client):
-    # Test valid credentials
+    # Test valid Tier-1 credentials
     login_res = client.post("/api/v1/auth/login", json={
         "username": "analyst1",
         "password": "cybervision2026"
@@ -50,6 +50,10 @@ def test_auth_login_and_me(client):
     assert me_res.status_code == 200
     assert me_res.json()["username"] == "analyst1"
 
+    # Test unauthenticated access to /api/v1/auth/me
+    anon_me = client.get("/api/v1/auth/me")
+    assert anon_me.status_code == 401
+
     # Test invalid credentials
     bad_res = client.post("/api/v1/auth/login", json={
         "username": "analyst1",
@@ -57,8 +61,76 @@ def test_auth_login_and_me(client):
     })
     assert bad_res.status_code == 401
 
+    # Test logout endpoint
+    logout_res = client.post("/api/v1/auth/logout", headers=headers)
+    assert logout_res.status_code == 200
+    assert logout_res.json()["status"] == "success"
+
+    # Verify token is invalidated after logout
+    post_logout_me = client.get("/api/v1/auth/me", headers=headers)
+    assert post_logout_me.status_code == 401
+
+
+def test_rbac_role_enforcement(client):
+    # Log in as Tier-1 analyst
+    t1_login = client.post("/api/v1/auth/login", json={
+        "username": "analyst1",
+        "password": "cybervision2026"
+    })
+    t1_token = t1_login.json()["access_token"]
+    t1_headers = {"Authorization": f"Bearer {t1_token}"}
+
+    # Log in as Tier-2 incident responder
+    t2_login = client.post("/api/v1/auth/login", json={
+        "username": "lead_analyst",
+        "password": "defense2026"
+    })
+    t2_token = t2_login.json()["access_token"]
+    t2_headers = {"Authorization": f"Bearer {t2_token}"}
+
+    # 1. Tier-1 is blocked from ingesting raw logs (403 Forbidden)
+    ingest_payload = {"logs": [{"layer_source": "network", "src_ip": "1.2.3.4", "dst_ip": "5.6.7.8"}]}
+    t1_ingest = client.post("/api/v1/ingest", json=ingest_payload, headers=t1_headers)
+    assert t1_ingest.status_code == 403
+
+    # 2. Tier-2 is allowed to ingest raw logs (200 OK)
+    t2_ingest = client.post("/api/v1/ingest", json=ingest_payload, headers=t2_headers)
+    assert t2_ingest.status_code == 200
+
+    # 3. Tier-1 is blocked from approving containment gate (403 Forbidden)
+    contain_payload = {
+        "incident_id": "INC-2026-TEST",
+        "analyst_username": "analyst1",
+        "action": "Approve Containment",
+        "notes": "Unauthorized attempt to isolate host"
+    }
+    t1_contain = client.post("/api/v1/incidents/triage", json=contain_payload, headers=t1_headers)
+    assert t1_contain.status_code == 403
+
+    # 4. Tier-1 CAN perform normal investigation triage (200 OK)
+    investigate_payload = {
+        "incident_id": "INC-2026-TEST",
+        "analyst_username": "analyst1",
+        "action": "Investigate",
+        "notes": "Triaging anomaly symptoms"
+    }
+    t1_investigate = client.post("/api/v1/incidents/triage", json=investigate_payload, headers=t1_headers)
+    assert t1_investigate.status_code == 200
+
+    # 5. Tier-2 CAN approve containment gate (200 OK)
+    t2_contain = client.post("/api/v1/incidents/triage", json=contain_payload, headers=t2_headers)
+    assert t2_contain.status_code == 200
+
 
 def test_ingest_endpoint(client):
+    # Authenticate as Tier-2 Incident Responder who has ingest_logs permission
+    login_res = client.post("/api/v1/auth/login", json={
+        "username": "lead_analyst",
+        "password": "defense2026"
+    })
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     payload = {
         "logs": [
             {
@@ -82,7 +154,7 @@ def test_ingest_endpoint(client):
             }
         ]
     }
-    res = client.post("/api/v1/ingest", json=payload)
+    res = client.post("/api/v1/ingest", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
@@ -91,12 +163,23 @@ def test_ingest_endpoint(client):
 
 
 def test_input_validation_invalid_data(client):
+    login_res = client.post("/api/v1/auth/login", json={
+        "username": "lead_analyst",
+        "password": "defense2026"
+    })
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
     # Missing required 'logs' field
-    res = client.post("/api/v1/ingest", json={"invalid_field": 123})
+    res = client.post("/api/v1/ingest", json={"invalid_field": 123}, headers=headers)
     assert res.status_code == 422
 
 
 def test_detect_endpoint(client):
+    login_res = client.post("/api/v1/auth/login", json={
+        "username": "analyst1",
+        "password": "cybervision2026"
+    })
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+
     payload = {
         "events": [
             {
@@ -117,7 +200,7 @@ def test_detect_endpoint(client):
             }
         ]
     }
-    res = client.post("/api/v1/detect", json=payload)
+    res = client.post("/api/v1/detect", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["total_events"] == 2
@@ -161,13 +244,19 @@ def test_playbooks_endpoint(client):
 
 
 def test_triage_action_recording(client):
+    login_res = client.post("/api/v1/auth/login", json={
+        "username": "lead_analyst",
+        "password": "defense2026"
+    })
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+
     payload = {
         "incident_id": "INC-2026-0001",
-        "analyst_username": "analyst1",
+        "analyst_username": "lead_analyst",
         "action": "Approve Containment",
         "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block."
     }
-    res = client.post("/api/v1/incidents/triage", json=payload)
+    res = client.post("/api/v1/incidents/triage", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "Recorded"

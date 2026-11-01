@@ -22,5 +22,37 @@
     "action": "Approve Containment",
     "notes": "Verified SSH brute-force progression; applied temporary host isolation.",
     "timestamp": "2026-11-01T08:18:40.779363+00:00"
+  },
+  {
+    "action_id": "ACT-f13b0e68",
+    "incident_id": "INC-2026-TEST",
+    "analyst": "analyst1",
+    "action": "Investigate",
+    "notes": "Triaging anomaly symptoms",
+    "timestamp": "2026-11-01T08:34:16.122456+00:00"
+  },
+  {
+    "action_id": "ACT-a43bd67d",
+    "incident_id": "INC-2026-TEST",
+    "analyst": "analyst1",
+    "action": "Approve Containment",
+    "notes": "Unauthorized attempt to isolate host",
+    "timestamp": "2026-11-01T08:34:16.131790+00:00"
+  },
+  {
+    "action_id": "ACT-a1e83237",
+    "incident_id": "INC-2026-0001",
+    "analyst": "lead_analyst",
+    "action": "Approve Containment",
+    "notes": "Verified SSH brute-force attack progression. Approved temporary ACL block.",
+    "timestamp": "2026-11-01T08:34:17.019641+00:00"
+  },
+  {
+    "action_id": "ACT-ed977fcb",
+    "incident_id": "INC-2026-0001",
+    "analyst": "lead_analyst",
+    "action": "Approve Containment",
+    "notes": "Authorized perimeter drop",
+    "timestamp": "2026-11-01T08:41:09.612520+00:00"
   }
 ]

@@ -17,7 +17,9 @@ import os
 import uuid
 import json
 import secrets
-from datetime import datetime, timezone
+import hashlib
+import hmac
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +28,7 @@ import pandas as pd
 import joblib
 
 from api.schemas import (
-    LoginRequest, LoginResponse, AnalystProfile,
+    LoginRequest, LoginResponse, LogoutResponse, AnalystProfile,
     IngestRequest, IngestResponse,
     DetectionRequest, DetectionResponse, DetectionAlert,
     IncidentSummary, ExplainResponse,
@@ -70,25 +72,39 @@ alert_lookup: Dict[str, Dict[str, Any]] = {}
 loaded_ensemble: Optional[HybridThreatEnsemble] = None
 feature_pipeline: Optional[FeatureEngineeringPipeline] = None
 
-# Analyst Authentication & Session Store
+# Analyst Authentication & Secure Hashed Credentials Store
+# Passwords hashed with PBKDF2-HMAC-SHA256 (100,000 rounds) + unique 16-byte cryptographically secure salt
 ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+def hash_password(password: str, salt: bytes) -> str:
+    """Compute PBKDF2-HMAC-SHA256 password hash with 100,000 iterations."""
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000).hex()
+
+def verify_password(plain_password: str, salt: bytes, hashed: str) -> bool:
+    """Constant-time verification of password against stored hash."""
+    candidate = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt, 100000).hex()
+    return hmac.compare_digest(candidate, hashed)
+
 ANALYST_CREDENTIALS = {
     "analyst1": {
-        "password": "cybervision2026",
+        "salt": bytes.fromhex("4606d3bb6720c506419cfd9a1e94ff12"),
+        "hash": "7a2cc0f5e18375e4907df240bdb7c24bc4598a4066564a9e5499393dfb8a5522",
         "name": "Kranthi A. (Tier-1 SOC)",
         "role": "Tier-1 Analyst",
         "tier": "Tier-1",
         "permissions": ["view_alerts", "triage_incidents", "run_xai"]
     },
     "lead_analyst": {
-        "password": "defense2026",
+        "salt": bytes.fromhex("8b18629abf4e9ee3573aacec4c15e7b6"),
+        "hash": "52b3102ffec79bc78bf83e5d45a73d3de0069157dad24b12f576ae907068cffb",
         "name": "Manohar G. (Tier-2 IR)",
         "role": "Incident Responder",
         "tier": "Tier-2",
-        "permissions": ["view_alerts", "triage_incidents", "approve_containment", "run_xai"]
+        "permissions": ["view_alerts", "triage_incidents", "approve_containment", "run_xai", "ingest_logs"]
     },
     "admin": {
-        "password": "socadmin2026",
+        "salt": bytes.fromhex("ffea81fda8bb7db9832ed5a23243756e"),
+        "hash": "e9830cead11d4d83499535b914756e7c24b6e032af21c29cb4385c9d546bf030",
         "name": "Yash Chowdary G. (SOC Lead)",
         "role": "SOC Administrator",
         "tier": "Tier-3",
@@ -99,22 +115,58 @@ ANALYST_CREDENTIALS = {
 AUDIT_LOGS_PATH = "data/cache/analyst_actions.json"
 
 
-def get_current_analyst(authorization: Optional[str] = Header(None)) -> Optional[Dict[str, Any]]:
-    """Validates session token or optional API key."""
+def get_current_analyst(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    """Validates session token or optional API key, enforcing expiration."""
     if not authorization:
-        # Default read-only guest analyst for seamless dashboard calls
-        return {"username": "guest", "role": "Observer", "permissions": ["view_alerts"]}
+        # Default read-only guest analyst for unauthenticated exploration
+        return {"username": "guest", "role": "Observer", "tier": "Guest", "permissions": ["view_alerts"]}
     
     token = authorization.replace("Bearer ", "").strip()
     if token in ACTIVE_SESSIONS:
-        return ACTIVE_SESSIONS[token]
+        session = ACTIVE_SESSIONS[token]
+        # Check token expiration
+        if "expires_at" in session:
+            try:
+                exp_time = datetime.fromisoformat(session["expires_at"])
+                if datetime.now(timezone.utc) > exp_time:
+                    del ACTIVE_SESSIONS[token]
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Session token has expired. Please log in again."
+                    )
+            except (ValueError, TypeError):
+                pass
+        return session
     
     # Check if header matches internal admin API key
     expected_api_key = os.getenv("CYBERVISION_API_KEY", "").strip()
     if expected_api_key and token == expected_api_key:
-        return {"username": "system_admin", "role": "System Admin", "permissions": ["all"]}
+        return {"username": "system_admin", "role": "System Admin", "tier": "Tier-3", "permissions": ["all"]}
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token.")
+
+
+def require_authenticated(analyst: Dict[str, Any] = Depends(get_current_analyst)) -> Dict[str, Any]:
+    """Ensures caller has a verified active session (not an unauthenticated guest)."""
+    if analyst.get("username") == "guest":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please provide a valid Bearer session token."
+        )
+    return analyst
+
+
+def require_permission(perm: str):
+    """Enforces specific permission check based on analyst tier and roles."""
+    def dependency(analyst: Dict[str, Any] = Depends(require_authenticated)) -> Dict[str, Any]:
+        perms = analyst.get("permissions", [])
+        if "all" not in perms and perm not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Required permission '{perm}' is not granted for role '{analyst.get('role')}'."
+            )
+        return analyst
+    return dependency
 
 
 @app.on_event("startup")
@@ -170,22 +222,26 @@ def startup_event():
 # ==============================================================================
 @app.post("/api/v1/auth/login", response_model=LoginResponse)
 def login_analyst(req: LoginRequest):
-    """Authenticate SOC analyst and issue a secure session bearer token."""
-    user = ANALYST_CREDENTIALS.get(req.username.strip().lower())
-    if not user or user["password"] != req.password:
+    """Authenticate SOC analyst and issue a secure expiring session token."""
+    username = req.username.strip().lower()
+    user = ANALYST_CREDENTIALS.get(username)
+    if not user or not verify_password(req.password, user["salt"], user["hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid analyst username or password."
         )
 
     token = f"cv_{secrets.token_hex(24)}"
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=24)
     session_data = {
-        "username": req.username.strip().lower(),
+        "username": username,
         "analyst_name": user["name"],
         "role": user["role"],
         "tier": user["tier"],
         "permissions": user["permissions"],
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat()
     }
     ACTIVE_SESSIONS[token] = session_data
 
@@ -199,12 +255,24 @@ def login_analyst(req: LoginRequest):
     )
 
 
+@app.post("/api/v1/auth/logout", response_model=LogoutResponse)
+def logout_analyst(authorization: Optional[str] = Header(None)):
+    """Revokes active analyst session token."""
+    if not authorization:
+        return LogoutResponse(status="success", message="No active session provided.")
+    token = authorization.replace("Bearer ", "").strip()
+    if token in ACTIVE_SESSIONS:
+        del ACTIVE_SESSIONS[token]
+        return LogoutResponse(status="success", message="Session revoked successfully.")
+    return LogoutResponse(status="success", message="Session already revoked or not found.")
+
+
 @app.get("/api/v1/auth/me", response_model=AnalystProfile)
-def get_current_analyst_profile(analyst: Dict[str, Any] = Depends(get_current_analyst)):
+def get_current_analyst_profile(analyst: Dict[str, Any] = Depends(require_authenticated)):
     """Returns profile context and permissions of active analyst."""
     return AnalystProfile(
-        username=analyst.get("username", "guest"),
-        analyst_name=analyst.get("analyst_name", "Guest Observer"),
+        username=analyst.get("username", "unknown"),
+        analyst_name=analyst.get("analyst_name", "Unknown Analyst"),
         role=analyst.get("role", "Observer"),
         tier=analyst.get("tier", "Tier-1"),
         permissions=analyst.get("permissions", ["view_alerts"])
@@ -226,7 +294,7 @@ def health_check():
 
 
 @app.post("/api/v1/ingest", response_model=IngestResponse)
-def ingest_logs(req: IngestRequest, analyst: Dict[str, Any] = Depends(get_current_analyst)):
+def ingest_logs(req: IngestRequest, analyst: Dict[str, Any] = Depends(require_permission("ingest_logs"))):
     """Normalize and persist heterogeneous raw logs into DuckDB."""
     normalizer = ECSNormalizer()
     normalized_records = []
@@ -251,7 +319,7 @@ def ingest_logs(req: IngestRequest, analyst: Dict[str, Any] = Depends(get_curren
 
 
 @app.post("/api/v1/detect", response_model=DetectionResponse)
-def detect_threats(req: DetectionRequest, analyst: Dict[str, Any] = Depends(get_current_analyst)):
+def detect_threats(req: DetectionRequest, analyst: Dict[str, Any] = Depends(require_authenticated)):
     """Run real-time multi-model threat detection on incoming events."""
     if not req.events:
         return DetectionResponse(total_events=0, threats_detected=0, alerts=[])
@@ -373,8 +441,20 @@ def get_correlated_incidents():
 
 
 @app.post("/api/v1/incidents/triage", response_model=TriageActionResponse)
-def record_triage_action(req: TriageActionRequest, analyst: Dict[str, Any] = Depends(get_current_analyst)):
+def record_triage_action(
+    req: TriageActionRequest,
+    analyst: Dict[str, Any] = Depends(require_permission("triage_incidents"))
+):
     """Logs human analyst containment decision to immutable audit trail."""
+    # Strict RBAC enforcement: "Approve Containment" requires Tier-2 or Tier-3 permissions
+    if req.action == "Approve Containment":
+        perms = analyst.get("permissions", [])
+        if "all" not in perms and "approve_containment" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Containment approval requires Tier-2 (Incident Responder) or Tier-3 permissions. Current role '{analyst.get('role')}' is not authorized to approve containment."
+            )
+
     timestamp = datetime.now(timezone.utc).isoformat()
     entry = {
         "action_id": f"ACT-{uuid.uuid4().hex[:8]}",

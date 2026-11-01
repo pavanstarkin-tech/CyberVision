@@ -21,6 +21,11 @@ class LoginResponse(BaseModel):
     expires_in_hours: int = 24
 
 
+class LogoutResponse(BaseModel):
+    status: str
+    message: str
+
+
 class AnalystProfile(BaseModel):
     username: str
     analyst_name: str

@@ -1,0 +1,13 @@
+Metric,Value_ms,Unit
+Model-Only Supervised (XGBoost) Latency,0.606,ms/event
+Model-Only Anomaly (Isolation Forest) Latency,8.109,ms/event
+Model-Only Hybrid Ensemble Latency,18.784,ms/event
+Feature Extraction & Scaling Latency,13.394,ms/event
+Full Detection Pipeline Latency,32.178,ms/event
+TreeSHAP Attribution Latency,0.988,ms/alert
+LIME Tabular Attribution Latency,82.009,ms/alert
+Graph Correlation Latency (100 alerts),3.704,ms/batch
+SQLite CTI Cache Lookup Latency,10.436,ms/lookup
+Playbook Selection Latency,0.0,ms/alert
+Full End-to-End Triage Latency,43.64,ms/alert
+Model Batch Throughput,29947.8,Events/sec
